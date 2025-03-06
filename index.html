@@ -1,0 +1,278 @@
+
+<!-- Clean Button Mashing Game, made by Cyclone aka 6figures -->
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Button Mash Tug-of-War</title> 
+    <style>
+        body {
+            text-align: center;
+            font-family: Arial, sans-serif;
+            background-color: #222;
+            color: white; 
+            margin: 0;
+            padding: 0;
+        }
+        .hidden { display: none; }
+        .container {
+            width: 80%;
+            max-width: 600px;
+            margin: auto;
+            padding: 20px;
+            background: #333;
+            border-radius: 10px;
+            box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.3);
+            margin-top: 50px;
+        }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            padding: 15px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 18px;
+            transition: 0.3s;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        #progressBar {
+            width: 100%;
+            height: 30px;
+            background: #444;
+            position: relative;
+            border-radius: 5px;
+            overflow: hidden;
+            margin: 20px 0;
+        }
+        #progress {
+            height: 100%;
+            width: 50%;
+            background: #4CAF50;
+            transition: width 0.1s;
+        }
+        #keysDisplay {
+            font-size: 24px;
+            margin-top: 10px;
+        }
+        .key {
+            font-weight: bold;
+            padding: 5px;
+            display: inline-block;
+            min-width: 40px;
+        }
+        .active {
+            color: #ffcc00;
+            font-size: 28px;
+        }
+        @keyframes rainbowText {
+            0% { color: red; text-shadow: 0 0 8px red; }
+            20% { color: orange; text-shadow: 0 0 8px orange; }
+            40% { color: yellow; text-shadow: 0 0 8px yellow; }
+            60% { color: green; text-shadow: 0 0 8px green; }
+            80% { color: blue; text-shadow: 0 0 8px blue; }
+            100% { color: violet; text-shadow: 0 0 8px violet; }
+        }
+        @keyframes rainbowBar {
+            0% { background-color: red; box-shadow: 0 0 15px red; }
+            20% { background-color: orange; box-shadow: 0 0 15px orange; }
+            40% { background-color: yellow; box-shadow: 0 0 15px yellow; }
+            60% { background-color: green; box-shadow: 0 0 15px green; }
+            80% { background-color: blue; box-shadow: 0 0 15px blue; }
+            100% { background-color: violet; box-shadow: 0 0 15px violet; }
+        }
+        .rainbow-text {
+            animation: rainbowText 0.5s infinite;
+        }
+        .rainbow-bar {
+            animation: rainbowBar 0.5s infinite;
+        }
+    </style>
+</head>
+<body>
+    <div id="menu" class="container">
+        <h1>Button Mash Tug-of-War</h1>
+        <button onclick="startGame()">Start Game</button>
+    </div>
+
+    <div id="game" class="container hidden">
+        <h2 class="game-title">Press the correct keys repeatedly!</h2>
+        <div id="keysDisplay">
+            Press: <span id="key1" class="key"></span> or <span id="key2" class="key"></span>
+        </div>
+        <div id="gameArea">
+            <div id="progressBar">
+                <div id="progress"></div>
+            </div>
+        </div>
+        <h3>Round: <span id="round">1</span></h3>
+        <h3>Score: <span id="score">0</span></h3>
+        <button id="leaveBtn" onclick="leaveGame()">Leave Game</button>
+    </div>
+
+    <div id="gameOver" class="container hidden">
+        <h1>Game Over!</h1>
+        <p>Your Score: <span id="finalScore"></span></p>
+        <button onclick="restartGame()">Play Again</button>
+        <button onclick="backToMenu()">Back to Menu</button>
+    </div>
+
+    <script>
+        let progress = 50;
+        let botSpeed = 0.3;
+        let gameInterval;
+        let lastKey = "";
+        let hitCount = 0;
+        let keys = [];
+        let currentKeyIndex = 0;
+        let score = 0;
+        let round = 1;
+
+        const konamiCode = ["ArrowUp", "ArrowUp", "ArrowDown", "ArrowDown", "ArrowLeft", "ArrowRight", "ArrowLeft", "ArrowRight", "b", "a"];
+        let konamiIndex = 0;
+        let easterEggActive = false;
+
+        function getRandomKeys() {
+            const keyOptions = "abcdefghijklmnopqrstuvwxyz";
+            let k1, k2;
+            do {
+                k1 = keyOptions[Math.floor(Math.random() * keyOptions.length)];
+                k2 = keyOptions[Math.floor(Math.random() * keyOptions.length)];
+            } while (k1 === k2);
+            return [k1, k2];
+        }
+
+        function startGame() {
+            document.getElementById("menu").classList.add("hidden");
+            document.getElementById("game").classList.remove("hidden");
+            document.getElementById("gameOver").classList.add("hidden");
+            progress = 50;
+            botSpeed = 0.3;
+            lastKey = "";
+            hitCount = 0;
+            score = 0;
+            round = 1;
+            konamiIndex = 0;
+            keys = getRandomKeys();
+            currentKeyIndex = 0;
+            updateKeysDisplay();
+            updateProgress();
+            updateScore();
+            gameLoop();
+        }
+
+        function gameLoop() {
+            gameInterval = setInterval(() => {
+                progress -= botSpeed;
+                if (progress <= 0) {
+                    gameOver();
+                }
+                updateProgress();
+            }, 100);
+        }
+
+        document.addEventListener("keydown", (event) => {
+            if (event.key === konamiCode[konamiIndex]) {
+                konamiIndex++;
+                if (konamiIndex === konamiCode.length) {
+                    toggleEasterEgg();
+                }
+            } else {
+                konamiIndex = 0;
+            }
+
+            if (event.key === keys[currentKeyIndex] && event.key !== lastKey) {
+                progress += 2;
+                lastKey = event.key;
+                currentKeyIndex = 1 - currentKeyIndex;
+                hitCount++;
+                score++;
+                if (progress >= 100) {
+                    nextRound();
+                }
+                if (hitCount >= 20) {
+                    keys = getRandomKeys();
+                    currentKeyIndex = 0;
+                    hitCount = 0;
+                }
+                updateKeysDisplay();
+                updateProgress();
+                updateScore();
+            }
+        });
+
+        document.addEventListener("keyup", () => {
+            lastKey = "";
+        });
+
+        function updateProgress() {
+            const progressBar = document.getElementById("progress");
+            progressBar.style.width = progress + "%";
+        }
+
+        function updateKeysDisplay() {
+            document.getElementById("key1").textContent = keys[0];
+            document.getElementById("key2").textContent = keys[1];
+            document.getElementById("key1").classList.toggle("active", currentKeyIndex === 0);
+            document.getElementById("key2").classList.toggle("active", currentKeyIndex === 1);
+        }
+
+        function updateScore() {
+            document.getElementById("score").textContent = score;
+            document.getElementById("round").textContent = round;
+        }
+
+        function nextRound() {
+            alert("You won this round! Moving to the next one.");
+            round++;
+            botSpeed += 0.1;
+            progress = 50;
+            hitCount = 0;
+            keys = getRandomKeys();
+            currentKeyIndex = 0;
+            updateKeysDisplay();
+            updateScore();
+        }
+
+        function toggleEasterEgg() {
+            easterEggActive = !easterEggActive;
+            const title = document.querySelector(".game-title");
+            const progressBar = document.getElementById("progress");
+            if (easterEggActive) {
+                title.classList.add("rainbow-text");
+                progressBar.classList.add("rainbow-bar");
+            } else {
+                title.classList.remove("rainbow-text");
+                progressBar.classList.remove("rainbow-bar");
+            }
+            konamiIndex = 0;
+        }
+
+        function gameOver() {
+            clearInterval(gameInterval);
+            document.getElementById("game").classList.add("hidden");
+            document.getElementById("gameOver").classList.remove("hidden");
+            document.getElementById("finalScore").textContent = score;
+        }
+
+        function restartGame() {
+            startGame();
+        }
+
+        function leaveGame() {
+            clearInterval(gameInterval);
+            document.getElementById("game").classList.add("hidden");
+            document.getElementById("menu").classList.remove("hidden");
+        }
+
+        function backToMenu() {
+            document.getElementById("gameOver").classList.add("hidden");
+            document.getElementById("menu").classList.remove("hidden");
+        }
+    </script>
+</body>
+</html>
